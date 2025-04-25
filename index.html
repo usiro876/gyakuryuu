@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>逆流コミュニティMVP</title>
+  <style>
+    body { font-family: sans-serif; margin: 1rem; }
+    #post-input { width: 100%; height: 4rem; }
+    #post-btn { margin-top: 0.5rem; }
+    #posts { list-style: none; padding: 0; }
+    #posts li { border-bottom: 1px solid #ddd; padding: 0.5rem 0; }
+    .remaining { color: #666; font-size: 0.9rem; }
+  </style>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <p id="notice">この場所は記憶を前提としていません。</p>
+
+  <div id="post-form">
+    <textarea id="post-input" placeholder="ここにテキストを入力..."></textarea>
+    <button id="post-btn">投稿</button>
+  </div>
+
+  <ul id="posts"></ul>
+</body>
+</html>
