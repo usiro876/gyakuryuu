@@ -39,4 +39,109 @@
 
 <script>
 /* ---------- 変数 ---------- */
-let values       = [];        //
+let values       = [];        // 元のリスト
+let sorted       = [];        // 暫定ランク
+let candidateIdx = 0;         // 次に挿入する values のインデックス
+let cand         = null;      // 現在比較中の候補
+let low, high;                // 探索範囲
+let compareLeft;              // 現在表示している左ボタンの値（A）
+
+/* ---------- 入力ステップ ---------- */
+function addValue() {
+  const input = document.getElementById('valueInput');
+  const v     = input.value.trim();
+  if (v && !values.includes(v)) {
+    values.push(v);
+    document.getElementById('valueList').innerHTML =
+      values.map(x => `<li>${x}</li>`).join('');
+    input.value = '';
+    document.getElementById('startBtn').disabled = values.length < 3;
+  }
+}
+
+function start() {
+  /* シャッフル */
+  for (let i = values.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [values[i], values[j]] = [values[j], values[i]];
+  }
+  /* 1 件目を先頭に据える */
+  sorted.push(values[0]);
+  candidateIdx = 1;
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('compare').classList.remove('hidden');
+  nextComparison();
+}
+
+/* ---------- 比較ステップ ---------- */
+function nextComparison() {
+  /* すべて処理済みなら結果へ */
+  if (candidateIdx >= values.length) {
+    showResult();
+    return;
+  }
+
+  /* 新しい候補を取り出し探索初期化 */
+  if (cand === null) {
+    cand = values[candidateIdx];
+    low  = 0;
+    high = sorted.length;
+    /* sorted が空→ありえない（1件目入済み） */
+  }
+
+  /* 挿入位置が決まった？ */
+  if (low >= high) {
+    sorted.splice(low, 0, cand); // 挿入
+    cand = null;
+    candidateIdx++;
+    nextComparison();
+    return;
+  }
+
+  /* 途中比較 */
+  const mid = Math.floor((low + high) / 2);
+  const pivot = sorted[mid];
+
+  /* 左右ボタンをランダム配置してバイアス軽減 */
+  if (Math.random() < 0.5) {
+    setButtons(cand,  pivot);
+    compareLeft = cand;  // A 側の値
+  } else {
+    setButtons(pivot, cand);
+    compareLeft = pivot;
+  }
+
+  document.getElementById('status').textContent =
+    `残り ${values.length - candidateIdx}/${values.length}`;
+}
+
+function setButtons(aText, bText) {
+  document.getElementById('btnA').textContent = aText;
+  document.getElementById('btnB').textContent = bText;
+}
+
+function choose(chosen) {
+  const mid = Math.floor((low + high) / 2);
+  const pivot = sorted[mid];
+  const winner = (chosen === 'A') ? document.getElementById('btnA').textContent
+                                  : document.getElementById('btnB').textContent;
+  /* cand が勝者なら cand は pivot より上位 → high = mid */
+  if (winner === cand) {
+    high = mid;
+  } else {
+    /* cand が負け → cand は pivot より下位 → low = mid + 1 */
+    low = mid + 1;
+  }
+  nextComparison();
+}
+
+/* ---------- 結果表示 ---------- */
+function showResult() {
+  document.getElementById('compare').classList.add('hidden');
+  document.getElementById('result').classList.remove('hidden');
+  document.getElementById('rankList').innerHTML =
+    sorted.map(v => `<li>${v}</li>`).join('');
+}
+</script>
+</body>
+</html>
