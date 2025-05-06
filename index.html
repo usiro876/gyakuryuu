@@ -4,17 +4,17 @@
   <meta charset="UTF-8">
   <title>価値観ランキング（最小比較版）</title>
   <style>
-    body            { font-family:sans-serif; text-align:center; padding:30px; background:#f5f5f5; }
-    input,button    { padding:10px; font-size:1em; margin:5px; }
-    .redBtn         { background:red;   color:#fff; border:none; border-radius:8px; }
-    .blueBtn        { background:blue;  color:#fff; border:none; border-radius:8px; }
-    .hidden         { display:none; }
-    ul              { list-style:none; padding:0; }
+    body{font-family:sans-serif;text-align:center;padding:30px;background:#f5f5f5}
+    input,button{padding:10px;font-size:1em;margin:5px}
+    .redBtn{background:red;color:#fff;border:none;border-radius:8px}
+    .blueBtn{background:blue;color:#fff;border:none;border-radius:8px}
+    .hidden{display:none}
+    ul{list-style:none;padding:0}
   </style>
 </head>
 <body>
 
-<!-- Step 1 : 価値観入力 -->
+<!-- 1) 価値観入力 -->
 <div id="setup">
   <h1>価値観を入力（3つ以上）</h1>
   <input id="valueInput" placeholder="例: 自由">
@@ -23,7 +23,7 @@
   <button id="startBtn" onclick="start()" disabled>開始</button>
 </div>
 
-<!-- Step 2 : 比較フェーズ -->
+<!-- 2) 比較 -->
 <div id="compare" class="hidden">
   <h2>どちらがより大事？</h2>
   <button id="btnA" class="redBtn"  onclick="choose('A')"></button>
@@ -31,7 +31,7 @@
   <p id="status"></p>
 </div>
 
-<!-- Step 3 : 結果 -->
+<!-- 3) 結果 -->
 <div id="result" class="hidden">
   <h2>あなたの価値観ランキング</h2>
   <ol id="rankList"></ol>
@@ -39,108 +39,121 @@
 
 <script>
 /* ---------- 変数 ---------- */
-let values       = [];        // 元のリスト
-let sorted       = [];        // 暫定ランク
-let candidateIdx = 0;         // 次に挿入する values のインデックス
-let cand         = null;      // 現在比較中の候補
-let low, high;                // 探索範囲
-let compareLeft;              // 現在表示している左ボタンの値（A）
+let values        = [];
+let sorted        = [];
+let candidateIdx  = 0;
+let cand          = null;
+let low, high;
 
-/* ---------- 入力ステップ ---------- */
-function addValue() {
-  const input = document.getElementById('valueInput');
-  const v     = input.value.trim();
-  if (v && !values.includes(v)) {
+/* 進捗用カウンタ */
+let totalQuestionsEstimate = 0; // スタート時に算出
+let questionsAsked         = 0; // 実際にクリックした回数
+
+/* ---------- 入力 ---------- */
+function addValue(){
+  const v = document.getElementById('valueInput').value.trim();
+  if(v && !values.includes(v)){
     values.push(v);
     document.getElementById('valueList').innerHTML =
-      values.map(x => `<li>${x}</li>`).join('');
-    input.value = '';
-    document.getElementById('startBtn').disabled = values.length < 3;
+      values.map(x=>`<li>${x}</li>`).join('');
+    document.getElementById('valueInput').value='';
+    document.getElementById('startBtn').disabled = values.length<3;
   }
 }
 
-function start() {
+function start(){
   /* シャッフル */
-  for (let i = values.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [values[i], values[j]] = [values[j], values[i]];
+  for(let i=values.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [values[i],values[j]]=[values[j],values[i]];
   }
-  /* 1 件目を先頭に据える */
+  /* 1 件目を確定 */
   sorted.push(values[0]);
-  candidateIdx = 1;
+  candidateIdx=1;
+
+  /* 質問数の上限を概算：Σ⌈log₂(k)⌉+1 (k = 1..n-1) */
+  for(let k=1;k<values.length;k++){
+    totalQuestionsEstimate += Math.ceil(Math.log2(k))+1;
+  }
+
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('compare').classList.remove('hidden');
   nextComparison();
 }
 
-/* ---------- 比較ステップ ---------- */
-function nextComparison() {
-  /* すべて処理済みなら結果へ */
-  if (candidateIdx >= values.length) {
-    showResult();
-    return;
+/* ---------- 比較 ---------- */
+function nextComparison(){
+  /* すべて完了？ */
+  if(candidateIdx >= values.length && cand===null){
+    showResult(); return;
   }
 
-  /* 新しい候補を取り出し探索初期化 */
-  if (cand === null) {
+  /* 新候補の準備 */
+  if(cand===null){
     cand = values[candidateIdx];
     low  = 0;
     high = sorted.length;
-    /* sorted が空→ありえない（1件目入済み） */
   }
 
-  /* 挿入位置が決まった？ */
-  if (low >= high) {
-    sorted.splice(low, 0, cand); // 挿入
-    cand = null;
+  /* 挿入位置が決定？ */
+  if(low >= high){
+    sorted.splice(low,0,cand);     // 挿入
+    cand=null;
     candidateIdx++;
-    nextComparison();
+    nextComparison();              // 次候補へ
     return;
   }
 
-  /* 途中比較 */
-  const mid = Math.floor((low + high) / 2);
+  /* 比較する pivot を選択 */
+  const mid   = Math.floor((low+high)/2);
   const pivot = sorted[mid];
 
-  /* 左右ボタンをランダム配置してバイアス軽減 */
-  if (Math.random() < 0.5) {
-    setButtons(cand,  pivot);
-    compareLeft = cand;  // A 側の値
-  } else {
-    setButtons(pivot, cand);
-    compareLeft = pivot;
+  /* バイアス軽減：左右ランダム配置 */
+  if(Math.random()<0.5){
+    setButtons(cand, pivot);   // A: cand
+  }else{
+    setButtons(pivot, cand);   // A: pivot
   }
-
-  document.getElementById('status').textContent =
-    `残り ${values.length - candidateIdx}/${values.length}`;
+  updateStatus();
 }
 
-function setButtons(aText, bText) {
-  document.getElementById('btnA').textContent = aText;
-  document.getElementById('btnB').textContent = bText;
+function setButtons(aText,bText){
+  document.getElementById('btnA').textContent=aText;
+  document.getElementById('btnB').textContent=bText;
 }
 
-function choose(chosen) {
-  const mid = Math.floor((low + high) / 2);
+function choose(chosen){
+  /* 質問カウンタを進める */
+  questionsAsked++;
+
+  const mid   = Math.floor((low+high)/2);
   const pivot = sorted[mid];
-  const winner = (chosen === 'A') ? document.getElementById('btnA').textContent
-                                  : document.getElementById('btnB').textContent;
-  /* cand が勝者なら cand は pivot より上位 → high = mid */
-  if (winner === cand) {
+  const btnA  = document.getElementById('btnA').textContent;
+  const winner= (chosen==='A') ? btnA
+                               : document.getElementById('btnB').textContent;
+
+  /* 勝者が cand かどうかで探索範囲を更新 */
+  if(winner === cand){
     high = mid;
-  } else {
-    /* cand が負け → cand は pivot より下位 → low = mid + 1 */
-    low = mid + 1;
+  }else{
+    low  = mid+1;
   }
   nextComparison();
 }
 
-/* ---------- 結果表示 ---------- */
-function showResult() {
+/* ---------- 進捗表示 ---------- */
+function updateStatus(){
+  const remaining = totalQuestionsEstimate - questionsAsked;
+  document.getElementById('status').textContent =
+    `質問 ${questionsAsked}/${totalQuestionsEstimate}　残り ≈ ${remaining}`;
+}
+
+/* ---------- 結果 ---------- */
+function showResult(){
   document.getElementById('compare').classList.add('hidden');
   document.getElementById('result').classList.remove('hidden');
   document.getElementById('rankList').innerHTML =
-    sorted.map(v => `<li>${v}</li>`).join('');
+    sorted.map(v=>`<li>${v}</li>`).join('');
 }
 </script>
 </body>
