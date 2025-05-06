@@ -2,62 +2,110 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>選択サイト</title>
+  <title>価値観ランキングメーカー</title>
   <style>
     body {
       font-family: sans-serif;
       text-align: center;
-      padding: 50px;
+      padding: 30px;
       background-color: #f5f5f5;
     }
-
-    h1 {
-      font-size: 2em;
+    input, button {
+      padding: 10px;
+      font-size: 1em;
+      margin: 5px;
     }
-
-    .button {
-      font-size: 1.5em;
-      padding: 20px 40px;
-      margin: 20px;
-      border: none;
-      border-radius: 10px;
-      color: white;
-      cursor: pointer;
-      transition: transform 0.1s ease;
-    }
-
-    .button:active {
-      transform: scale(0.95);
-    }
-
-    .button.a {
-      background-color: red;
-    }
-
-    .button.b {
-      background-color: blue;
-    }
-
-    .log {
-      margin-top: 30px;
-      font-size: 1.2em;
-    }
+    .button-a { background-color: red; color: white; }
+    .button-b { background-color: blue; color: white; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <h1>どちらを選びますか？</h1>
-  <button class="button a" onclick="choose('A')">A</button>
-  <button class="button b" onclick="choose('B')">B</button>
 
-  <div class="log" id="log"></div>
+  <!-- Step 1: 価値観入力 -->
+  <div id="setup">
+    <h1>価値観を入力してください（3つ以上）</h1>
+    <input type="text" id="valueInput" placeholder="例: 自由">
+    <button onclick="addValue()">追加</button>
+    <ul id="valueList"></ul>
+    <button onclick="startGame()" id="startBtn" disabled>開始</button>
+  </div>
+
+  <!-- Step 2: 選択画面 -->
+  <div id="game" class="hidden">
+    <h2>どちらがより大事ですか？</h2>
+    <button class="button-a" id="btnA" onclick="choose('A')"></button>
+    <button class="button-b" id="btnB" onclick="choose('B')"></button>
+    <p id="progress"></p>
+  </div>
+
+  <!-- Step 3: 結果表示 -->
+  <div id="results" class="hidden">
+    <h2>あなたの価値観ランキング</h2>
+    <ol id="rankingList"></ol>
+  </div>
 
   <script>
-    const log = document.getElementById('log');
+    let values = [];
+    let scores = {};
+    let pairs = [];
+    let current = 0;
 
-    function choose(option) {
-      const entry = document.createElement('div');
-      entry.textContent = `あなたは「${option}」を選びました。`;
-      log.prepend(entry);
+    function addValue() {
+      const input = document.getElementById('valueInput');
+      const val = input.value.trim();
+      if (val && !values.includes(val)) {
+        values.push(val);
+        scores[val] = 0;
+        document.getElementById('valueList').innerHTML = values.map(v => `<li>${v}</li>`).join('');
+        input.value = '';
+        document.getElementById('startBtn').disabled = values.length < 3;
+      }
+    }
+
+    function startGame() {
+      document.getElementById('setup').classList.add('hidden');
+      document.getElementById('game').classList.remove('hidden');
+      generatePairs();
+      showNextPair();
+    }
+
+    function generatePairs() {
+      for (let i = 0; i < values.length; i++) {
+        for (let j = i + 1; j < values.length; j++) {
+          pairs.push([values[i], values[j]]);
+        }
+      }
+      // シャッフル
+      for (let i = pairs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+      }
+    }
+
+    function showNextPair() {
+      if (current >= pairs.length) {
+        showResults();
+        return;
+      }
+      const [a, b] = pairs[current];
+      document.getElementById('btnA').textContent = a;
+      document.getElementById('btnB').textContent = b;
+      document.getElementById('progress').textContent = `質問 ${current + 1} / ${pairs.length}`;
+    }
+
+    function choose(choice) {
+      const [a, b] = pairs[current];
+      scores[choice === 'A' ? a : b]++;
+      current++;
+      showNextPair();
+    }
+
+    function showResults() {
+      document.getElementById('game').classList.add('hidden');
+      document.getElementById('results').classList.remove('hidden');
+      const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+      document.getElementById('rankingList').innerHTML = sorted.map(([v, s]) => `<li>${v}（${s}点）</li>`).join('');
     }
   </script>
 </body>
