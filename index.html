@@ -2,145 +2,41 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>価値観ランキング（推論付き）</title>
+  <title>価値観ランキング（最小比較版）</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 30px; background: #f5f5f5; }
-    input, button { padding: 10px; font-size: 1em; margin: 5px; }
-    .button-a { background-color: red; color: white; }
-    .button-b { background-color: blue; color: white; }
-    .hidden { display: none; }
+    body            { font-family:sans-serif; text-align:center; padding:30px; background:#f5f5f5; }
+    input,button    { padding:10px; font-size:1em; margin:5px; }
+    .redBtn         { background:red;   color:#fff; border:none; border-radius:8px; }
+    .blueBtn        { background:blue;  color:#fff; border:none; border-radius:8px; }
+    .hidden         { display:none; }
+    ul              { list-style:none; padding:0; }
   </style>
 </head>
 <body>
 
-  <!-- ステップ 1: 入力 -->
-  <div id="setup">
-    <h1>価値観を入力（3つ以上）</h1>
-    <input type="text" id="valueInput" placeholder="例: 自由">
-    <button onclick="addValue()">追加</button>
-    <ul id="valueList"></ul>
-    <button onclick="startGame()" id="startBtn" disabled>開始</button>
-  </div>
+<!-- Step 1 : 価値観入力 -->
+<div id="setup">
+  <h1>価値観を入力（3つ以上）</h1>
+  <input id="valueInput" placeholder="例: 自由">
+  <button onclick="addValue()">追加</button>
+  <ul id="valueList"></ul>
+  <button id="startBtn" onclick="start()" disabled>開始</button>
+</div>
 
-  <!-- ステップ 2: 選択 -->
-  <div id="game" class="hidden">
-    <h2>どちらがより大事ですか？</h2>
-    <button class="button-a" id="btnA" onclick="choose('A')"></button>
-    <button class="button-b" id="btnB" onclick="choose('B')"></button>
-    <p id="progress"></p>
-  </div>
+<!-- Step 2 : 比較フェーズ -->
+<div id="compare" class="hidden">
+  <h2>どちらがより大事？</h2>
+  <button id="btnA" class="redBtn"  onclick="choose('A')"></button>
+  <button id="btnB" class="blueBtn" onclick="choose('B')"></button>
+  <p id="status"></p>
+</div>
 
-  <!-- ステップ 3: 結果 -->
-  <div id="results" class="hidden">
-    <h2>あなたの価値観ランキング</h2>
-    <ol id="rankingList"></ol>
-  </div>
+<!-- Step 3 : 結果 -->
+<div id="result" class="hidden">
+  <h2>あなたの価値観ランキング</h2>
+  <ol id="rankList"></ol>
+</div>
 
-  <script>
-    let values = [];
-    let graph = {}; // 有向グラフ: a -> [b, c] means a > b, a > c
-    let currentPair = [];
-
-    function addValue() {
-      const input = document.getElementById('valueInput');
-      const val = input.value.trim();
-      if (val && !values.includes(val)) {
-        values.push(val);
-        graph[val] = [];
-        document.getElementById('valueList').innerHTML = values.map(v => `<li>${v}</li>`).join('');
-        input.value = '';
-        document.getElementById('startBtn').disabled = values.length < 3;
-      }
-    }
-
-    function startGame() {
-      document.getElementById('setup').classList.add('hidden');
-      document.getElementById('game').classList.remove('hidden');
-      showNextPair();
-    }
-
-    function choose(winnerKey) {
-      const [a, b] = currentPair;
-      const winner = winnerKey === 'A' ? a : b;
-      const loser  = winnerKey === 'A' ? b : a;
-      addRelation(winner, loser);
-      showNextPair();
-    }
-
-    function addRelation(winner, loser) {
-      if (!graph[winner].includes(loser)) {
-        graph[winner].push(loser);
-        propagate(winner, loser);
-      }
-    }
-
-    // 推移的に a > b, b > c ⇒ a > c を追加
-    function propagate(from, to) {
-      for (const child of graph[to]) {
-        if (!graph[from].includes(child)) {
-          graph[from].push(child);
-          propagate(from, child);
-        }
-      }
-      for (const key in graph) {
-        if (graph[key].includes(from) && !graph[key].includes(to)) {
-          graph[key].push(to);
-          propagate(key, to);
-        }
-      }
-    }
-
-    function showNextPair() {
-      currentPair = getNextPair();
-      if (!currentPair) {
-        showResults();
-        return;
-      }
-      document.getElementById('btnA').textContent = currentPair[0];
-      document.getElementById('btnB').textContent = currentPair[1];
-      document.getElementById('progress').textContent = `残りの比較を進めています...`;
-    }
-
-    function getNextPair() {
-      for (let i = 0; i < values.length; i++) {
-        for (let j = i + 1; j < values.length; j++) {
-          const a = values[i];
-          const b = values[j];
-          if (!isComparable(a, b)) return [a, b];
-        }
-      }
-      return null;
-    }
-
-    function isComparable(a, b) {
-      return (graph[a] && graph[a].includes(b)) || (graph[b] && graph[b].includes(a));
-    }
-
-    function showResults() {
-      document.getElementById('game').classList.add('hidden');
-      document.getElementById('results').classList.remove('hidden');
-      const sorted = topologicalSort();
-      document.getElementById('rankingList').innerHTML = sorted.map(v => `<li>${v}</li>`).join('');
-    }
-
-    function topologicalSort() {
-      const visited = {};
-      const result = [];
-
-      function visit(node) {
-        if (visited[node]) return;
-        visited[node] = true;
-        for (const neighbor of graph[node]) {
-          visit(neighbor);
-        }
-        result.unshift(node);
-      }
-
-      for (const node of values) {
-        visit(node);
-      }
-      return result;
-    }
-  </script>
-</body>
-</html>
+<script>
+/* ---------- 変数 ---------- */
+let values       = [];        //
